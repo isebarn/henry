@@ -1,0 +1,72 @@
+Proposal for a Zillow scraper
+
+I'll design it in modules, so you can pick out the stuff you want
+
+1: Basic scraper: 60USD (required)
+  - This basically includes research work, project setup and stuff like that.
+
+2: Save every flat field/array from resofacts.json - 75 USD. This figure is simply 0.5 USD per field.
+  - Scraper that collects and isolates the json, parses the json and feeds it to the db
+
+  - Db table 'listing' where every row includes everything from 'bedrooms' to 'buildingAreaSource'. Fields that are lists, like 'parkingFeatures' will be of column type array
+  info['resoFacts']
+
+  a- (optional) The field 'otherFacts' from resofacts.json stored AS IS in a dict column.
+  info['resoFacts']['otherFacts']
+
+
+  b- (optional) The field 'atAGlanceFacts' from resofacts.json stored AS IS in a dict column.
+  info['resoFacts']['atAGlanceFacts']
+
+  c- (optional) The json file adpotential.json AS IS in a dict column. +5USD (why extra 5? it will require extra work on my part because these are all in a separate place)
+  info['adTargets']
+
+
+  d- (optional) The json file homevalues.json AS IS in a dict column. +5USD
+  info['homeValues']
+
+  e- (optional) The json file mortagerates.json AS IS in a dict column. +5USD
+  info['mortgageRates']
+
+  f- (optional) The json file solarpotential.json AS IS in a dict column. +5USD
+  info['solarPotential']
+
+  g- (optional) The json file taxhistory.json AS IS in a dict column. +5USD
+  info['taxHistory']
+
+3: Separate tables for optional fields in item 2: 15USD per table
+  If you want: 2a, 2b, 2c, 2d, 2e, 2f or 2g saved as a separate table with a foreign key to the listings table.
+  Note: There is a clear upside to this, it is significantly easier to work with this data if it is kept separate, so if you imagine that any of these fields is something that you would need to query a lot separately, fx taxhistory, it will save you endless headaches to simply save it separately.
+
+
+4: If you need anything from 4a, 4b, 4c, the base price is 10USD because it needs to be parsed separately
+
+4a: Save 'nearbyhomes' from nearbyhomes.json: 5 USD
+  From nearbyhomes.json.nearbyHomes. This can be parsed and the zpids pulled out, and saved into an array in the listings table. This means that the listings table will have an additional column cotaining zpid's of nearby listings that will point to another listing in the listings table. F.x
+
+  listings
+  id              zpid                                      nearby_homes
+   1          12345678           [66666666, 31571175, 13461331, 1374739]
+   2          66666666                              [12345678, 41348541]
+
+[x['zpid'] for x in info['nearbyHomes']]
+
+4b: Save 'schools' from nearbyhomes.json: 5 USD
+  Saved either as:
+  - a separate table: +5USD
+  - as a json column in listings.
+
+info['schools']
+
+4c: Save 'buildingpermits' from nearbyhomes.json: 5 USD
+  Saved as a json column in listings.
+
+info['buildingPermits']
+
+
+
+
+
+** key-value table example row
+id     foreign_key             key             value
+ 1               1    ParcelNumber        6029012019
