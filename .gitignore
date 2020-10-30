@@ -3,3 +3,5 @@
 *.sublime.*
 *.json
 *.pyc
+henry.sublime-workspace
+*.env

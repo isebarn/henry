@@ -6,8 +6,11 @@
 #     https://docs.scrapy.org/en/latest/topics/settings.html
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+from dotenv import load_dotenv
+load_dotenv()
 
 BOT_NAME = 'henry'
+
 
 SPIDER_MODULES = ['henry.spiders']
 NEWSPIDER_MODULE = 'henry.spiders'

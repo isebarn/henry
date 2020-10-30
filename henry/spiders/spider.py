@@ -40,7 +40,7 @@ class RootSpider(scrapy.Spider):
     })
 
   def start_requests(self):
-    zips = ['60629']#, '79936', '11368', '90650', '90011', '91331', '11226', '90201', '11373', '11220', '11385', '10467', '92335', '77084', '10025', '11208', '90280', '77449', '11236', '78521', '90805', '11207', '90250', '08701', '11219', '60623', '60618', '91342', '60632', '60639']
+    zips = [_zip.Value for _zip in Operations.QueryZIP()]
 
     for _zip in zips:
       yield scrapy.Request(url=self.search_url.format(_zip, 1),
@@ -74,6 +74,8 @@ class RootSpider(scrapy.Spider):
         callback=self.listing,
         errback=self.errbacktest,
         meta={'proxy': choice(self.proxies), 'zip': response.meta.get('zip')})
+
+      break
 
     # Next page
     if False:#response.xpath(self.next_page_disabled).extract_first() == None:
