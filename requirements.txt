@@ -22,6 +22,7 @@ pycparser==2.20
 PyDispatcher==2.0.5
 PyHamcrest==2.0.2
 pyOpenSSL==19.1.0
+python-dotenv==0.15.0
 queuelib==1.5.0
 requests==2.24.0
 Scrapy==2.4.0
