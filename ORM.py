@@ -16,6 +16,19 @@ def get_nullable_array(array_name, dictionary):
   else:
     return []
 
+class Log(Base):
+  __tablename__ = 'log'
+
+  Id = Column('id', Integer, primary_key=True)
+  Value = Column('value', JSON)
+  Date = Column('date', DateTime)
+  Time = Column('time', Integer)
+
+  def __init__(self, data):
+    self.Value = data['counters']
+    self.Time = data['time']
+    self.Date = datetime.now()
+
 class ZIP(Base):
   __tablename__ = 'zip'
 
@@ -391,6 +404,10 @@ class Operations:
 
   def QueryZIP():
     return session.query(ZIP).all()
+
+  def SaveLog(data):
+    session.add(Log(data))
+    session.commit()
 
 if __name__ == "__main__":
   print(os.environ.get('DATABASE'))

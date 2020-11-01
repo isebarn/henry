@@ -25,6 +25,7 @@ class RootSpider(scrapy.Spider):
   listing_errors = []
   zip_errors = []
   counters = { 'listings': 0, 'listing_errors': 0, 'zip_errors': 0 }
+  start_time = datetime.now()
 
   def write_listing_error(response, error, description):
     self.errors.append({
@@ -33,12 +34,16 @@ class RootSpider(scrapy.Spider):
       'description': description
     })
 
+    self.counters['listing_errors'] += 1
+
   def write_zip_error(response, error, description):
     self.errors.append({
       'zip': response.meta.get('zip'),
       'error': error,
       'description': description
     })
+
+    self.counters['zip_errors'] += 1
 
   def quicksave(self):
     listings = []
@@ -171,6 +176,7 @@ class RootSpider(scrapy.Spider):
     data['buildingPermits'] = info.get('buildingPermits', {})
 
     self.listings.append(data)
+    self.counters['listings'] += 1
 
   def errbacktest(self, failiure):
     print(failiure)
@@ -190,6 +196,11 @@ class RootSpider(scrapy.Spider):
     email(os.environ.get('GMAIL'), os.environ.get('PASSWORD'), 
       os.environ.get('RECIPENT'), datetime.now(), self.counters['listings'],
       self.counters['listing_errors'], self.counters['zip_errors'])
+
+    Operations.SaveLog({
+      'counters': self.counters,
+      'time': (datetime.now() - self.start_time).seconds
+    })
 
 if __name__ == "__main__":
   process = CrawlerProcess({
