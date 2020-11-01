@@ -84,19 +84,19 @@ class RootSpider(scrapy.Spider):
     try:
       data = response.xpath(self.zip_search_results)[1].extract()
     except Exception as e:
-      write_zip_error(response, str(e), "Error extracting search results application/json")
+      self.write_zip_error(response, str(e), "Error extracting search results application/json")
       return
 
     try:
       json_dict = json.loads(data.replace('<!--', '').replace('-->', ''))
     except Exception as e:
-      write_zip_error(response, str(e), "Error loading json")
+      self.write_zip_error(response, str(e), "Error loading json")
       return    
 
     try:
       urls = [x['detailUrl'] for x in json_dict['cat1']['searchResults']['listResults']]
     except Exception as e:
-      write_zip_error(response, str(e), "Could not find URL's")
+      self.write_zip_error(response, str(e), "Could not find URL's")
       return
 
     # Properties
@@ -182,6 +182,7 @@ class RootSpider(scrapy.Spider):
     result['priceHistory'] = info['priceHistory']
     
     
+    # Forgot to save
     result['longitude'] = info['longitude']
     result['latitude'] = info['latitude']
     result['brokerageName'] = info['brokerageName']
