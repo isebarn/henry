@@ -16,16 +16,6 @@ def get_nullable_array(array_name, dictionary):
   else:
     return []
 
-class Proxy(Base):
-  __tablename__ = 'proxy'
-
-  Id = Column('id', Integer, primary_key=True)
-  Value = Column('value', String)
-
-  def __init__(self, data):
-    self.Id = data['id']
-    self.Value = data['value']
-
 class ZIP(Base):
   __tablename__ = 'zip'
 
@@ -385,8 +375,6 @@ session = Session()
 
 class Operations:
   def SaveListing(data):
-    from pprint import pprint
-    pprint([x['zpid'] for x in data])
     statement = Listing.__table__.delete().where(Listing.Id.in_([x['zpid'] for x in data]))
     engine.execute(statement)
 
@@ -403,9 +391,6 @@ class Operations:
 
   def QueryZIP():
     return session.query(ZIP).all()
-
-  def QueryProxy():
-    return session.query(Proxy).all()
 
 if __name__ == "__main__":
   print(os.environ.get('DATABASE'))

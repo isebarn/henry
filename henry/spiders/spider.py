@@ -11,11 +11,11 @@ from random import choice
 from ORM import Operations
 from Mail import email
 from datetime import datetime
+import requests
 
 class RootSpider(scrapy.Spider):
   name = "root"
   listings = []
-  proxies = ['p.webshare.io:20000', 'p.webshare.io:20001', 'p.webshare.io:20002', 'p.webshare.io:20003', 'p.webshare.io:20004', 'p.webshare.io:20005', 'p.webshare.io:20006', 'p.webshare.io:20007', 'p.webshare.io:20008', 'p.webshare.io:20009']
   search_url = 'https://www.zillow.com/homes/{}_rb/{}_p/'
   listing_url = 'https://www.zillow.com/homedetails/{}_zpid/'
   zip_search_results = "//script[@type='application/json']/text()"
@@ -24,6 +24,7 @@ class RootSpider(scrapy.Spider):
   listing_json_path = "//script[@type='application/json']/text()"
   listing_errors = []
   zip_errors = []
+  counters = { 'listings': 0, 'listing_errors': 0, 'zip_errors': 0 }
 
   def write_listing_error(response, error, description):
     self.errors.append({
@@ -39,8 +40,34 @@ class RootSpider(scrapy.Spider):
       'description': description
     })
 
+  def quicksave(self):
+    listings = []
+    while len(self.listings) > 0:
+      listings.append(self.listings.pop())
+
+    Operations.SaveListing(listings)
+
+    listing_errors = []
+    while len(self.listing_errors) > 0:
+      listing_errors.append(self.listing_errors.pop())
+
+    Operations.SaveListingError(listing_errors)
+
+    zip_errors = []
+    while len(self.zip_errors) > 0:
+      zip_errors.append(self.zip_errors.pop()) 
+
+    Operations.SaveZIPError(zip_errors)
+
+
   def start_requests(self):
     zips = [_zip.Value for _zip in Operations.QueryZIP()]
+    self.proxies = ['http://{}:{}@{}:{}'.format(
+      x.split(':')[2],
+      x.split(':')[3],
+      x.split(':')[0],
+      x.split(':')[1]) for x in 
+    requests.get(os.environ.get('PROXIES')).text.split('\r\n')[0:-2]]
 
     for _zip in zips:
       yield scrapy.Request(url=self.search_url.format(_zip, 1),
@@ -75,10 +102,9 @@ class RootSpider(scrapy.Spider):
         errback=self.errbacktest,
         meta={'proxy': choice(self.proxies), 'zip': response.meta.get('zip')})
 
-      break
 
     # Next page
-    if False:#response.xpath(self.next_page_disabled).extract_first() == None:
+    if response.xpath(self.next_page_disabled).extract_first() == None:
       if response.xpath(self.next_page_url_exists).extract_first() == None: return
 
       yield scrapy.Request(self.search_url.format(response.meta.get('zip'), response.meta.get('page') + 1),
@@ -91,6 +117,9 @@ class RootSpider(scrapy.Spider):
 
 
   def listing(self, response):
+    if len(self.listings) > 20:
+      self.quicksave()
+
     try:
       json_data = response.xpath(self.listing_json_path)[3].extract()
     except Exception as e:
@@ -159,8 +188,8 @@ class RootSpider(scrapy.Spider):
     Operations.SaveZIPError(self.zip_errors)
 
     email(os.environ.get('GMAIL'), os.environ.get('PASSWORD'), 
-      os.environ.get('RECIPENT'), datetime.now(), len(self.listings),
-      len(self.listing_errors), len(self.zip_errors))
+      os.environ.get('RECIPENT'), datetime.now(), self.counters['listings'],
+      self.counters['listing_errors'], self.counters['zip_errors'])
 
 if __name__ == "__main__":
   process = CrawlerProcess({
