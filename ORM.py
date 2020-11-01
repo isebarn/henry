@@ -69,8 +69,11 @@ class Listing(Base):
   __tablename__ = 'listings'
 
   Id = Column('id', Integer, primary_key=True)
+  DateSold = Column('dateSold', DateTime, nullable=True)
   OnMarketDate = Column('onMarketDate', DateTime, nullable=True)
   ScrapeDate = Column('scrapeDate', DateTime, nullable=True)
+  DatePosted = Column('datePosted', DateTime, nullable=True)
+
   ArchitecturalStyle = Column('architecturalStyle', String, nullable=True)
   AssociationFee = Column('associationFee', String, nullable=True)
   AssociationFee2 = Column('associationFee2', String, nullable=True)
@@ -84,9 +87,11 @@ class Listing(Base):
   BuilderName = Column('builderName', String, nullable=True)
   BuildingAreaSource = Column('buildingAreaSource', String, nullable=True)
   BuildingName = Column('buildingName', String, nullable=True)
+  City = Column('city', String, nullable=True)
   CityRegion = Column('cityRegion', String, nullable=True)
   CommonWalls = Column('commonWalls', String, nullable=True)
   ConstructionMaterials = Column('constructionMaterials', String, nullable=True)
+  Country = Column('country', String, nullable=True)
   DevelopmentStatus = Column('developmentStatus', String, nullable=True)
   ElementarySchool = Column('elementarySchool', String, nullable=True)
   ElementarySchoolDistrict = Column('elementarySchoolDistrict', String, nullable=True)
@@ -107,11 +112,14 @@ class Listing(Base):
   ParcelNumber = Column('parcelNumber', String, nullable=True)
   PropertyCondition = Column('propertyCondition', String, nullable=True)
   RoofType = Column('roofType', String, nullable=True)
+  State = Column('state', String, nullable=True)
+  StreetAddress = Column('streetAddress', String, nullable=True)
   StructureType = Column('structureType', String, nullable=True)
   Topography = Column('topography', String, nullable=True)
   VirtualTour = Column('virtualTour', String, nullable=True)
   Zoning = Column('zoning', String, nullable=True)
   ZoningDescription = Column('zoningDescription', String, nullable=True)
+
   Bathrooms = Column('bathrooms', Integer, nullable=True)
   BathroomsFull = Column('bathroomsFull', Integer, nullable=True)
   BathroomsHalf = Column('bathroomsHalf', Integer, nullable=True)
@@ -119,12 +127,14 @@ class Listing(Base):
   BathroomsPartial = Column('bathroomsPartial', Integer, nullable=True)
   BathroomsThreeQuarter = Column('bathroomsThreeQuarter', Integer, nullable=True)
   Bedrooms = Column('bedrooms', Integer, nullable=True)
+  BrokerId = Column('brokerId', Integer, nullable=True)
   CoveredSpaces = Column('coveredSpaces', Integer, nullable=True)
   Fireplaces = Column('fireplaces', Integer, nullable=True)
   GarageSpaces = Column('garageSpaces', Integer, nullable=True)
   NumberOfUnitsInCommunity = Column('numberOfUnitsInCommunity', Integer, nullable=True)
   OpenParkingSpaces = Column('openParkingSpaces', Integer, nullable=True)
   Parking = Column('parking', Integer, nullable=True)
+  Price = Column('price', Integer, nullable=True)
   Stories = Column('stories', Integer, nullable=True)
   StoriesTotal = Column('storiesTotal', Integer, nullable=True)
   TaxAnnualAmount = Column('taxAnnualAmount', Integer, nullable=True)
@@ -195,6 +205,8 @@ class Listing(Base):
   NearbyHomes = Column('nearbyHomes', JSON)
   Schools = Column('schools', JSON)
   BuildingPermits = Column('buildingPermits', JSON)
+  ListingSubType = Column('listing_sub_type', JSON)
+  PriceHistory = Column('priceHistory', JSON)
   AboveGradeFinishedArea = Column('aboveGradeFinishedArea', String)
   AdditionalParcelsDescription = Column('additionalParcelsDescription', String)
   BuildingArea = Column('buildingArea', String)
@@ -219,10 +231,13 @@ class Listing(Base):
     self.Id = data['zpid']
 
     # Dates
-    if data['onMarketDate'] != None:
+    if data.get('onMarketDate', None) != None:
       self.OnMarketDate = datetime.fromtimestamp(data['onMarketDate']/1000)
     else:
       self.OnMarketDate = None
+
+    self.DateSold = data.get('dateSold', None)
+    self.DatePosted = data.get('datePosted', None)
 
     self.ScrapeDate = datetime.now()
     self.ZIP = data['zip']
@@ -241,9 +256,11 @@ class Listing(Base):
     self.BuilderName = data['builderName']
     self.BuildingAreaSource = data['buildingAreaSource']
     self.BuildingName = data['buildingName']
+    self.City = data['city']
     self.CityRegion = data['cityRegion']
     self.CommonWalls = data['commonWalls']
     self.ConstructionMaterials = data['constructionMaterials']
+    self.Country = data['country']
     self.DevelopmentStatus = data['developmentStatus']
     self.ElementarySchool = data['elementarySchool']
     self.ElementarySchoolDistrict = data['elementarySchoolDistrict']
@@ -264,6 +281,8 @@ class Listing(Base):
     self.ParcelNumber = data['parcelNumber']
     self.PropertyCondition = data['propertyCondition']
     self.RoofType = data['roofType']
+    self.State = data['state']
+    self.StreetAddress = data['streetAddress']
     self.StructureType = data['structureType']
     self.Topography = data['topography']
     self.VirtualTour = data['virtualTour']
@@ -278,12 +297,14 @@ class Listing(Base):
     self.BathroomsPartial = data['bathroomsPartial']
     self.BathroomsThreeQuarter = data['bathroomsThreeQuarter']
     self.Bedrooms = data['bedrooms']
+    self.BrokerId = data['brokerId']
     self.CoveredSpaces = data['coveredSpaces']
     self.Fireplaces = data['fireplaces']
     self.GarageSpaces = data['garageSpaces']
     self.NumberOfUnitsInCommunity = data['numberOfUnitsInCommunity']
     self.OpenParkingSpaces = data['openParkingSpaces']
     self.Parking = data['parking']
+    self.Price = data['price']
     self.Stories = data['stories']
     self.StoriesTotal = data['storiesTotal']
     self.TaxAnnualAmount = data['taxAnnualAmount']
@@ -359,7 +380,8 @@ class Listing(Base):
     self.NearbyHomes = data.get('nearbyHomes', {})
     self.Schools = data.get('schools', {})
     self.BuildingPermits = data.get('buildingPermits', {})
-
+    self.ListingSubType = data.get('listing_sub_type', {})
+    self.PriceHistory = data.get('priceHistory', {})
 
     # Unknown - Never seen IRL
     self.AboveGradeFinishedArea = str(data['aboveGradeFinishedArea'])

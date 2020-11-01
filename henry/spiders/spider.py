@@ -149,6 +149,8 @@ class RootSpider(scrapy.Spider):
       self.write_listing_error(response, str(e), "Could not extract keys")
       return
 
+
+
     try:
       info = data[keys[1]]['property']
     except Exception as e:
@@ -161,21 +163,43 @@ class RootSpider(scrapy.Spider):
       self.write_listing_error(response, str(e), "'resoFacts' not found in data")
       return
 
-    data = info['resoFacts']
-    data['zpid'] = info['zpid']
-    data['zip'] = response.meta.get('zip')
-    data['otherFacts'] = info['resoFacts']['otherFacts']
-    data['atAGlanceFacts'] = info['resoFacts']['atAGlanceFacts']
-    data['adTargets'] = info.get('adTargets', {})
-    data['homeValues'] = info.get('homeValues', {})
-    data['mortgageRates'] = info.get('mortgageRates', {})
-    data['solarPotential'] = info.get('solarPotential', {})
-    data['taxHistory'] = info.get('taxHistory', {})
-    data['nearbyHomes'] = [x['zpid'] for x in info['nearbyHomes']]
-    data['schools'] = info.get('schools', {})
-    data['buildingPermits'] = info.get('buildingPermits', {})
+    result = info['resoFacts']
 
-    self.listings.append(data)
+    result['dateSold'] = datetime.fromtimestamp(data[keys[0]]['property'].get('dateSold',0)/1000)
+    try:
+      result['datePosted'] = datetime.fromtimestamp(data[keys[1]]['property'].get('datePosted', 0)/1000)
+    except Exception as e:
+      result['datePosted'] = None
+
+    result['brokerId'] = data[keys[0]]['property'].get('brokerId', None)
+    result['price'] = data[keys[0]]['property'].get('price', 0)
+
+    result['state'] = info['state']
+    result['city'] = info['city']
+    result['country'] = info['country']
+    result['streetAddress'] = info['streetAddress']
+    result['listing_sub_type'] = info['listing_sub_type']
+    result['priceHistory'] = info['priceHistory']
+    
+    
+    result['longitude'] = info['longitude']
+    result['latitude'] = info['latitude']
+    result['brokerageName'] = info['brokerageName']
+
+    result['zpid'] = info['zpid']
+    result['zip'] = response.meta.get('zip')
+    result['otherFacts'] = info['resoFacts']['otherFacts']
+    result['atAGlanceFacts'] = info['resoFacts']['atAGlanceFacts']
+    result['adTargets'] = info.get('adTargets', {})
+    result['homeValues'] = info.get('homeValues', {})
+    result['mortgageRates'] = info.get('mortgageRates', {})
+    result['solarPotential'] = info.get('solarPotential', {})
+    result['taxHistory'] = info.get('taxHistory', {})
+    result['nearbyHomes'] = [x['zpid'] for x in info['nearbyHomes']]
+    result['schools'] = info.get('schools', {})
+    result['buildingPermits'] = info.get('buildingPermits', {})
+
+    self.listings.append(result)
     self.counters['listings'] += 1
 
   def errbacktest(self, failiure):
