@@ -119,6 +119,7 @@ class Listing(Base):
   VirtualTour = Column('virtualTour', String, nullable=True)
   Zoning = Column('zoning', String, nullable=True)
   ZoningDescription = Column('zoningDescription', String, nullable=True)
+  BrokerageName = Column('brokerageName', String, nullable=True)
 
   Bathrooms = Column('bathrooms', Integer, nullable=True)
   BathroomsFull = Column('bathroomsFull', Integer, nullable=True)
@@ -142,6 +143,9 @@ class Listing(Base):
   YearBuilt = Column('yearBuilt', Integer, nullable=True)
   ZIP = Column('zip', Integer, nullable=True)
   YearBuiltEffective = Column('yearBuiltEffective', Integer, nullable=True)
+  LotSizeNumber = Column('lotSizeNumber', Integer, nullable=True)
+  LivingAreaNumber = Column('livingAreaNumber', Integer, nullable=True)
+
   CanRaiseHorses = Column('canRaiseHorses', Boolean, nullable=True)
   Furnished = Column('furnished', Boolean, nullable=True)
   HasAdditionalParcels = Column('hasAdditionalParcels', Boolean, nullable=True)
@@ -225,6 +229,9 @@ class Listing(Base):
   WaterSources = Column('waterSources', String)
   WoodedArea = Column('woodedArea', String)
 
+  Longitude = Column('longitude', Float)
+  Latitude = Column('latitude', Float)
+
 
   def __init__(self, data):
     # Id
@@ -288,6 +295,7 @@ class Listing(Base):
     self.VirtualTour = data['virtualTour']
     self.Zoning = data['zoning']
     self.ZoningDescription = data['zoningDescription']
+    self.BrokerageName = data['brokerageName']
 
     # Integers
     self.Bathrooms = data['bathrooms']
@@ -300,6 +308,7 @@ class Listing(Base):
     self.BrokerId = data['brokerId']
     self.CoveredSpaces = data['coveredSpaces']
     self.Fireplaces = data['fireplaces']
+    self.LotSizeNumber = data['lotSize']
     self.GarageSpaces = data['garageSpaces']
     self.NumberOfUnitsInCommunity = data['numberOfUnitsInCommunity']
     self.OpenParkingSpaces = data['openParkingSpaces']
@@ -311,6 +320,11 @@ class Listing(Base):
     self.TaxAssessedValue = data['taxAssessedValue']
     self.YearBuilt = data['yearBuilt']
     self.YearBuiltEffective = data['yearBuiltEffective']
+    self.LivingAreaNumber = data['livingAreaNumber']
+
+    # Floats
+    self.Longitude = data['longitude']
+    self.Latitude = data['latitude']
 
     # Booleans
     self.CanRaiseHorses = data['canRaiseHorses']

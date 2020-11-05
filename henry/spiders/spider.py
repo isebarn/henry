@@ -27,8 +27,8 @@ class RootSpider(scrapy.Spider):
   counters = { 'listings': 0, 'listing_errors': 0, 'zip_errors': 0 }
   start_time = datetime.now()
 
-  def write_listing_error(response, error, description):
-    self.errors.append({
+  def write_listing_error(self, response, error, description):
+    self.listing_errors.append({
       'zpid': response.url.split('_zpid')[0].split('/')[-1],
       'error': error,
       'description': description
@@ -36,8 +36,8 @@ class RootSpider(scrapy.Spider):
 
     self.counters['listing_errors'] += 1
 
-  def write_zip_error(response, error, description):
-    self.errors.append({
+  def write_zip_error(self, response, error, description):
+    self.zip_errors.append({
       'zip': response.meta.get('zip'),
       'error': error,
       'description': description
@@ -185,7 +185,9 @@ class RootSpider(scrapy.Spider):
     # Forgot to save
     result['longitude'] = info['longitude']
     result['latitude'] = info['latitude']
+    result['lotSize'] = info['lotSize']
     result['brokerageName'] = info['brokerageName']
+    result['livingAreaNumber'] = info['livingArea']
 
     result['zpid'] = info['zpid']
     result['zip'] = response.meta.get('zip')
