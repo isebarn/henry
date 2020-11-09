@@ -9,25 +9,28 @@ import json
 import requests
 from random import choice
 from ORM import Operations
-from Mail import email
+#from Mail import email
 from datetime import datetime
 import requests
 
 class RootSpider(scrapy.Spider):
   name = "root"
   listings = []
-  search_url = 'https://www.zillow.com/homes/{}_rb/{}_p/'
+  search_url = 'https://www.zillow.com/homes/TYPE/{}_rb/{}_p/'
   listing_url = 'https://www.zillow.com/homedetails/{}_zpid/'
   zip_search_results = "//script[@type='application/json']/text()"
   next_page_disabled = "//a[@rel='next']/@disabled"
   next_page_url_exists = "//a[@rel='next']/@href"
-  listing_json_path = "//script[@type='application/json']/text()"
   listing_errors = []
   zip_errors = []
   counters = { 'listings': 0, 'listing_errors': 0, 'zip_errors': 0 }
   start_time = datetime.now()
 
   def write_listing_error(self, response, error, description):
+    if '_zpid' not in response.url:
+      print(response.url)
+      return
+
     self.listing_errors.append({
       'zpid': response.url.split('_zpid')[0].split('/')[-1],
       'error': error,
@@ -50,7 +53,11 @@ class RootSpider(scrapy.Spider):
     while len(self.listings) > 0:
       listings.append(self.listings.pop())
 
-    Operations.SaveListing(listings)
+    if self.TYPE == 'for_sale':
+      Operations.SaveListing(listings)
+    elif self.TYPE == 'for_rent':
+      Operations.SaveRentalListing(listings)
+
 
     listing_errors = []
     while len(self.listing_errors) > 0:
@@ -64,17 +71,18 @@ class RootSpider(scrapy.Spider):
 
     Operations.SaveZIPError(zip_errors)
 
-
   def start_requests(self):
+    #self.TYPE = 'for_sale'
+    print(self.TYPE)
+    self.search_url = self.search_url.replace('TYPE', self.TYPE)
     zips = [_zip.Value for _zip in Operations.QueryZIP()]
     self.proxies = ['http://{}:{}@{}:{}'.format(
       x.split(':')[2],
       x.split(':')[3],
       x.split(':')[0],
       x.split(':')[1]) for x in 
-    requests.get(os.environ.get('PROXIES')).text.split('\r\n')[0:-2]]
-
-    for _zip in zips:
+    requests.get("https://proxy.webshare.io/proxy/list/download/ieurtnhlzvtzijbgespesynywyjtmwzjviayolkk/-/http/username/domain/").text.split('\r\n')[0:-2]]
+    for _zip in [90001]:#zips:
       yield scrapy.Request(url=self.search_url.format(_zip, 1),
         callback=self.parser,
         errback=self.errbacktest,
@@ -101,12 +109,17 @@ class RootSpider(scrapy.Spider):
 
     # Properties
     for url in urls:
-      if 'captchaPerimeterX' in url: continue
+      if 'captchaPerimeterX' in url: 
+        continue
+
+      # Some urls are malformed
+      if 'https://www.zillow.com' not in url:
+        url = 'https://www.zillow.com' + url
+
       yield scrapy.Request(url=url,
         callback=self.listing,
         errback=self.errbacktest,
         meta={'proxy': choice(self.proxies), 'zip': response.meta.get('zip')})
-
 
     # Next page
     if response.xpath(self.next_page_disabled).extract_first() == None:
@@ -122,11 +135,47 @@ class RootSpider(scrapy.Spider):
 
 
   def listing(self, response):
+    if 'captchaPerimeterX' in response.url: 
+      return
+
+    if '_zpid' not in response.url :
+      if response.meta.get('retry', None) is not None:
+        yield scrapy.Request(url=url,
+          callback=self.listing,
+          errback=self.errbacktest,
+          meta={
+            'proxy': choice(self.proxies),
+            'zip': response.meta.get('zip'),
+            'retry': True})
+
+      else: return
+
+      return
+
+
+    # Some ads are a list of units instead of a single property 
+    if len(response.xpath("//a[@class='unit-card-link']")) > 0:
+      print(response.url)
+      for url in response.xpath("//a[@class='unit-card-link']/@href").extract():
+
+        if 'captchaPerimeterX' in url: 
+          continue
+
+        if 'https://www.zillow.com' not in url:
+          url = 'https://www.zillow.com' + url
+
+        yield scrapy.Request(url=url,
+          callback=self.listing,
+          errback=self.errbacktest,
+          meta={'proxy': choice(self.proxies), 'zip': response.meta.get('zip')})
+
+
+
     if len(self.listings) > 20:
       self.quicksave()
 
     try:
-      json_data = response.xpath(self.listing_json_path)[3].extract()
+      json_data = response.xpath("//script[@type='application/json']/text()")[3].extract()
     except Exception as e:
       self.write_listing_error(response, str(e), "Error extracting listing application/json")
       return
@@ -149,8 +198,6 @@ class RootSpider(scrapy.Spider):
       self.write_listing_error(response, str(e), "Could not extract keys")
       return
 
-
-
     try:
       info = data[keys[1]]['property']
     except Exception as e:
@@ -171,6 +218,10 @@ class RootSpider(scrapy.Spider):
     except Exception as e:
       result['datePosted'] = None
 
+    print(info['zpid'])
+
+    if not isinstance(info['zpid'], int): return
+
     result['brokerId'] = data[keys[0]]['property'].get('brokerId', None)
     result['price'] = data[keys[0]]['property'].get('price', 0)
 
@@ -179,7 +230,7 @@ class RootSpider(scrapy.Spider):
     result['country'] = info['country']
     result['streetAddress'] = info['streetAddress']
     result['listing_sub_type'] = info['listing_sub_type']
-    result['priceHistory'] = info['priceHistory']
+    result['priceHistory'] = info.get('priceHistory', {})
     
     
     # Forgot to save
@@ -216,13 +267,11 @@ class RootSpider(scrapy.Spider):
     return spider
 
   def spider_closed(self, spider):
-    Operations.SaveListing(self.listings)
-    Operations.SaveListingError(self.listing_errors)
-    Operations.SaveZIPError(self.zip_errors)
+    self.quicksave()
 
-    email(os.environ.get('GMAIL'), os.environ.get('PASSWORD'), 
-      os.environ.get('RECIPENT'), datetime.now(), self.counters['listings'],
-      self.counters['listing_errors'], self.counters['zip_errors'])
+    #email(os.environ.get('GMAIL'), os.environ.get('PASSWORD'), 
+    #  os.environ.get('RECIPENT'), datetime.now(), self.counters['listings'],
+    #  self.counters['listing_errors'], self.counters['zip_errors'])
 
     Operations.SaveLog({
       'counters': self.counters,
@@ -232,6 +281,7 @@ class RootSpider(scrapy.Spider):
 if __name__ == "__main__":
   process = CrawlerProcess({
     'USER_AGENT': 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)',
+    'TYPE': 'for_rent',
     'LOG_ENABLED': 1,
     'LOG_LEVEL': 'ERROR',
     'LOG_FORMAT': '%(levelname)s: %(message)s'
