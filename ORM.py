@@ -48,7 +48,7 @@ class ListingError(Base):
   Description = Column('description', String)
 
   def __init__(self, data):
-    self.ZPID = data['zpid']
+    self.ZPID = data['zpid'] if data.get('zpid', None) is not None else 0
     self.Error = data['error']
     self.Description = data['description']
 

@@ -27,15 +27,13 @@ class RootSpider(scrapy.Spider):
   start_time = datetime.now()
 
   def write_listing_error(self, response, error, description):
-    if '_zpid' not in response.url:
-      print(response.url)
-      return
+    error = { 'error': error, 'description': description }
 
-    self.listing_errors.append({
-      'zpid': response.url.split('_zpid')[0].split('/')[-1],
-      'error': error,
-      'description': description
-    })
+    zpid = response.url.split('_zpid')[0].split('/')[-1]
+    if zpid.isdigit():
+      error['zpid'] = int(zpid)
+
+    self.listing_errors.append(error)
 
     self.counters['listing_errors'] += 1
 
@@ -81,8 +79,9 @@ class RootSpider(scrapy.Spider):
       x.split(':')[3],
       x.split(':')[0],
       x.split(':')[1]) for x in 
-    requests.get("https://proxy.webshare.io/proxy/list/download/ieurtnhlzvtzijbgespesynywyjtmwzjviayolkk/-/http/username/domain/").text.split('\r\n')[0:-2]]
-    for _zip in [90001]:#zips:
+    requests.get(os.environ.get('PROXIES')).text.split('\r\n')[0:-2]]
+    
+    for _zip in zips:
       yield scrapy.Request(url=self.search_url.format(_zip, 1),
         callback=self.parser,
         errback=self.errbacktest,
