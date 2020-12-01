@@ -36,8 +36,7 @@ class ZIP(Base):
   Value = Column('value', String)
 
   def __init__(self, data):
-    self.Id = data['id']
-    self.Value = data['value']
+    self.Value = data
 
 class ListingError(Base):
   __tablename__ = 'listing_error'
@@ -804,4 +803,13 @@ class Operations:
     session.commit()
 
 if __name__ == "__main__":
+  print(Operations.QueryZIP())
+  if Operations.QueryZIP() == []:
+    file1 = open('uszip.txt', 'r') 
+    lines = file1.readlines() 
+    session.bulk_save_objects([ZIP(x.strip()) for x in lines])
+    session.commit()
+
+
+
   print(os.environ.get('DATABASE'))
