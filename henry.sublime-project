@@ -5,11 +5,5 @@
 			"path": "."
 		}
 	],
-	"settings":
-	{
-		"PyTest":
-		{
-			"mode": "manual"
-		}
-	}
+	"virtualenv": "/home/david/henry/venv"
 }

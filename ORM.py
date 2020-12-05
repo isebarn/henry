@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import sessionmaker
 
 
-engine = create_engine("postgresql://henry:henry123@192.168.1.35:5433/henry", echo=False)
+engine = create_engine(os.environ.get("DATABASE"), echo=False)
 Base = declarative_base()
 
 def get_nullable_array(array_name, dictionary):
@@ -230,6 +230,7 @@ class Listing(Base):
 
   Longitude = Column('longitude', Float)
   Latitude = Column('latitude', Float)
+  OffMarket = Column('offMarket', Boolean, default=False)
 
 
   def __init__(self, data):
@@ -581,6 +582,7 @@ class RentalListing(Base):
 
   Longitude = Column('longitude', Float)
   Latitude = Column('latitude', Float)
+  OffMarket = Column('offMarket', Boolean, default=False)
 
 
   def __init__(self, data):
@@ -798,12 +800,23 @@ class Operations:
   def QueryZIP():
     return session.query(ZIP).all()
 
+  def ListingOffMarket(zpid):
+    listing = Listing.get(zpid)
+    listing.OffMarket = True
+    session.commit()
+
+  def QueryZIPListings(_zip):
+    return {str(x.Id): x.Price for x in 
+      session.query(Listing.Id, Listing.Price).filter_by(ZIP=_zip)}
+
   def SaveLog(data):
     session.add(Log(data))
     session.commit()
 
+
 if __name__ == "__main__":
-  print(Operations.QueryZIP())
+  print({x.Id: x.Price for x in Operations.QueryZIPListings(90001)})
+  '''
   if Operations.QueryZIP() == []:
     file1 = open('uszip.txt', 'r') 
     lines = file1.readlines() 
@@ -813,3 +826,4 @@ if __name__ == "__main__":
 
 
   print(os.environ.get('DATABASE'))
+  '''

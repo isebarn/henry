@@ -21,10 +21,13 @@ class RootSpider(scrapy.Spider):
   zip_search_results = "//script[@type='application/json']/text()"
   next_page_disabled = "//a[@rel='next']/@disabled"
   next_page_url_exists = "//a[@rel='next']/@href"
+  recently_sold = "//*[@id='ds-container']/div[3]/div[2]/div/p/span[1]/text()"
+  off_market = "//*[@id='ds-container']/div[3]/div[2]/div/p/span[1]/span[2]/span/text()"
   listing_errors = []
   zip_errors = []
   counters = { 'listings': 0, 'listing_errors': 0, 'zip_errors': 0 }
   start_time = datetime.now()
+  properties = {}
 
   def write_listing_error(self, response, error, description):
     error = { 'error': error, 'description': description }
@@ -71,7 +74,6 @@ class RootSpider(scrapy.Spider):
 
   def start_requests(self):
     #self.TYPE = 'for_sale'
-    print(self.TYPE)
     self.search_url = self.search_url.replace('TYPE', self.TYPE)
     zips = [_zip.Value for _zip in Operations.QueryZIP()]
     self.proxies = ['http://{}:{}@{}:{}'.format(
@@ -80,7 +82,7 @@ class RootSpider(scrapy.Spider):
       x.split(':')[0],
       x.split(':')[1]) for x in 
     requests.get(os.environ.get('PROXIES')).text.split('\r\n')[0:-2]]
-    
+
     for _zip in zips:
       yield scrapy.Request(url=self.search_url.format(_zip, 1),
         callback=self.parser,
@@ -101,15 +103,36 @@ class RootSpider(scrapy.Spider):
       return    
 
     try:
-      urls = [x['detailUrl'] for x in json_dict['cat1']['searchResults']['listResults']]
+      urls = {x['detailUrl']: {"price": x['unformattedPrice'], "zpid": x['zpid']}
+        for x in json_dict['cat1']['searchResults']['listResults']}
+
     except Exception as e:
       self.write_zip_error(response, str(e), "Could not find URL's")
       return
 
+    # Get from DB existing listings in this zip code
+    _zip = response.meta.get('zip')
+    if response.meta.get('zip') not in self.properties:
+      self.properties[_zip] = Operations.QueryZIPListings(_zip)
+
     # Properties
-    for url in urls:
+    for url, values in urls.items():
+
       if 'captchaPerimeterX' in url: 
         continue
+
+      # start comparing with existing properties
+      if values['zpid'] in self.properties[_zip]:
+        saved_price = self.properties[_zip][values['zpid']]
+
+        # if property is in properties we remove it
+        # so we end up with self.properties[_zip] with only those that
+        # are sold (possibly)
+        self.properties[_zip].pop(values['zpid'])
+
+        # if the saved_price matches the current price we dont open the url
+        if values['price'] == saved_price:
+          continue
 
       # Some urls are malformed
       if 'https://www.zillow.com' not in url:
@@ -132,8 +155,27 @@ class RootSpider(scrapy.Spider):
           'page': response.meta.get('page') + 1,
           'zip': response.meta.get('zip')})
 
+    else:
+      for zpid in self.properties[_zip].keys():
+        yield scrapy.Request(url=self.listing_url.format(zpid),
+          callback=self.listing,
+          errback=self.errbacktest,
+          meta={'proxy': choice(self.proxies), 'check_sold': True, 'zpid': zpid})
+
 
   def listing(self, response):
+    # mark as off market those that are sold or off market
+    if response.meta.get('check_sold', None) is not None:
+      sold = response.xpath(self.recently_sold).extract()
+      if len(sold) > 0 and sold[0] == 'Sold':
+        Operations.ListingOffMarket(response.meta.get('zpid'))
+        return
+
+      off_market = response.xpath(self.off_market).extract()
+      if len(off_market) > 0 and off_market[0] == 'Sold':
+        Operations.ListingOffMarket(response.meta.get('zpid'))
+        return
+
     if 'captchaPerimeterX' in response.url: 
       return
 
