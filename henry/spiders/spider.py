@@ -72,10 +72,7 @@ class RootSpider(scrapy.Spider):
 
     Operations.SaveZIPError(zip_errors)
 
-  def start_requests(self):
-    #self.TYPE = 'for_sale'
-    self.search_url = self.search_url.replace('TYPE', self.TYPE)
-    zips = [_zip.Value for _zip in Operations.QueryZIP()]
+  def load_proxies(self):
     self.proxies = ['http://{}:{}@{}:{}'.format(
       x.split(':')[2],
       x.split(':')[3],
@@ -83,13 +80,31 @@ class RootSpider(scrapy.Spider):
       x.split(':')[1]) for x in 
     requests.get(os.environ.get('PROXIES')).text.split('\r\n')[0:-2]]
 
+  def get_proxy(self):
+    if len(self.proxies) < 10:
+      self.load_proxies()
+    return choice(self.proxies)
+
+  def start_requests(self):
+    #self.TYPE = 'for_sale'
+    self.search_url = self.search_url.replace('TYPE', self.TYPE)
+    zips = [_zip.Value for _zip in Operations.QueryZIP()]
+    self.load_proxies()
+
     for _zip in zips:
       yield scrapy.Request(url=self.search_url.format(_zip, 1),
         callback=self.parser,
         errback=self.errbacktest,
-        meta={'proxy': choice(self.proxies), 'page': 1, 'zip': _zip})
+        meta={
+          'proxy': self.get_proxy(), 
+          'page': 1, 
+          'zip': _zip})
 
   def parser(self, response):
+    if 'captchaPerimeterX' in response.url:
+      self.proxies.remove(response.meta.get('proxy'))
+      self.write_zip_error(response, "Captcha", "Captcha")
+
     try:
       data = response.xpath(self.zip_search_results)[1].extract()
     except Exception as e:
@@ -141,7 +156,9 @@ class RootSpider(scrapy.Spider):
       yield scrapy.Request(url=url,
         callback=self.listing,
         errback=self.errbacktest,
-        meta={'proxy': choice(self.proxies), 'zip': response.meta.get('zip')})
+        meta={
+          'proxy': self.get_proxy(),
+          'zip': response.meta.get('zip')})
 
     # Next page
     if response.xpath(self.next_page_disabled).extract_first() == None:
@@ -151,7 +168,7 @@ class RootSpider(scrapy.Spider):
         callback=self.parser,
         errback=self.errbacktest,
         meta={
-          'proxy': choice(self.proxies),
+          'proxy': self.get_proxy(),
           'page': response.meta.get('page') + 1,
           'zip': response.meta.get('zip')})
 
@@ -160,7 +177,10 @@ class RootSpider(scrapy.Spider):
         yield scrapy.Request(url=self.listing_url.format(zpid),
           callback=self.listing,
           errback=self.errbacktest,
-          meta={'proxy': choice(self.proxies), 'check_sold': True, 'zpid': zpid})
+          meta={
+            'proxy': self.get_proxy(), 
+            'check_sold': True, 
+            'zpid': zpid})
 
 
   def listing(self, response):
@@ -185,7 +205,7 @@ class RootSpider(scrapy.Spider):
           callback=self.listing,
           errback=self.errbacktest,
           meta={
-            'proxy': choice(self.proxies),
+            'proxy': self.get_proxy(),
             'zip': response.meta.get('zip'),
             'retry': True})
 
@@ -208,7 +228,9 @@ class RootSpider(scrapy.Spider):
         yield scrapy.Request(url=url,
           callback=self.listing,
           errback=self.errbacktest,
-          meta={'proxy': choice(self.proxies), 'zip': response.meta.get('zip')})
+          meta={
+            'proxy': self.get_proxy(), 
+            'zip': response.meta.get('zip')})
 
 
 
